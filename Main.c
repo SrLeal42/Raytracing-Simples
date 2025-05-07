@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <math.h>
 #include <SDL3/SDL.h>
 
@@ -31,7 +32,36 @@ struct Circle{
 };
 
 
-void DrawCircle(SDL_Surface* surface, struct Circle circle){
+struct pixel* CreateScreenPixels(){
+    struct pixel* array = malloc(LARGURA * ALTURA * sizeof(struct pixel));
+
+    if (!array) return NULL;
+
+    for (int i = 0; i < ALTURA; i++){
+
+        for (int j = 0; j < LARGURA; j++){
+
+            int idx = i * LARGURA + j;
+            //printf("ANTES XX: %.2lf\n", array[idx].x);
+            array[idx].x = j;
+            array[idx].y = i;
+            array[idx].r = 255;
+            array[idx].g = 255;
+            array[idx].b = 0;
+            array[idx].a = 100; // Porcentagem
+
+            //printf("DEPOIS XX: %.2lf\n", array[idx].x);
+
+        }
+
+    }
+
+    return array;
+
+}
+
+
+void DrawCircle(struct pixel* arrayPixels, struct Circle circle){
     
     // int halfRadius = circle.r/2;
 
@@ -42,9 +72,18 @@ void DrawCircle(SDL_Surface* surface, struct Circle circle){
             double dist_squared = pow(distX, 2) + pow(distY, 2);
 
             if (dist_squared <= pow(circle.r, 2)){
-                SDL_Rect rect = (SDL_Rect) {x, y, 1, 1};
-                Uint32 cor = SDL_MapRGB(SDL_GetPixelFormatDetails(surface->format), NULL, circle.color[0], circle.color[1], circle.color[2]);
-                SDL_FillSurfaceRect(surface, &rect, cor);
+
+                int idx = y * LARGURA + x;
+
+                struct pixel* pxl = &arrayPixels[idx];
+                
+                pxl->r = circle.color[0];
+                pxl->g = circle.color[1];
+                pxl->b = circle.color[2];
+                
+                // SDL_Rect rect = (SDL_Rect) {x, y, 1, 1};
+                // Uint32 cor = SDL_MapRGB(SDL_GetPixelFormatDetails(surface->format), NULL, circle.color[0], circle.color[1], circle.color[2]);
+                // SDL_FillSurfaceRect(surface, &rect, cor);
             }
 
         }
@@ -53,9 +92,9 @@ void DrawCircle(SDL_Surface* surface, struct Circle circle){
 }
 
 
-void DrawCircles(SDL_Surface* surface, struct Circle circles[], int num_circles){
+void DrawCircles(struct pixel* arrayPixels, struct Circle circles[], int num_circles){
     for (int i = 0; i < num_circles; i++){
-        DrawCircle(surface, circles[i]);
+        DrawCircle(arrayPixels, circles[i]);
     }
 }
 
@@ -70,6 +109,27 @@ void Light(SDL_Surface* surface, struct Circle op_circles[], struct Circle br_ci
         }
     }
 
+}
+
+
+void DrawScreenPixels(SDL_Surface* surface, struct pixel* arrayPixels){
+
+    for (int i = 0; i < ALTURA; i++){
+        for (int j = 0; j < LARGURA; j++){
+
+            int idx = i * LARGURA + j;
+
+            struct pixel pxl = arrayPixels[idx]; 
+
+            SDL_Rect p = (SDL_Rect) {j, i, 1, 1};
+            
+            Uint32 cor = SDL_MapRGB(SDL_GetPixelFormatDetails(surface->format), NULL, pxl.r, pxl.g, pxl.b);
+            // Uint32 cor = SDL_MapRGB(SDL_GetPixelFormatDetails(surface->format), NULL, 255, 255, 255);
+
+            SDL_FillSurfaceRect(surface, &p, cor);
+
+        }
+    }
 }
 
 
@@ -92,12 +152,14 @@ int main(){
 
     int qtd_pixels = LARGURA * ALTURA;
 
+    struct pixel* ScreenPixels = CreateScreenPixels();
+
     bool running = true;
 
     SDL_Event event;
 
     while(running){
-
+        
         while(SDL_PollEvent(&event)){
             if (event.type == SDL_EVENT_QUIT){
                 running = false;
@@ -105,10 +167,12 @@ int main(){
         }
 
 
-        Light(surface, opaque_circles, bright_circles);
+        // Light(surface, opaque_circles, bright_circles);
 
-        DrawCircles(surface, opaque_circles, NUM_CIRCULOS_OPACOS);
-        DrawCircles(surface, bright_circles, NUM_CIRCULOS_BRILHANTES);    
+        DrawCircles(ScreenPixels, opaque_circles, NUM_CIRCULOS_OPACOS);
+        DrawCircles(ScreenPixels, bright_circles, NUM_CIRCULOS_BRILHANTES);    
+        
+        DrawScreenPixels(surface, ScreenPixels);
 
         SDL_Texture* textura = SDL_CreateTextureFromSurface(render, surface);
         SDL_RenderClear(render);
@@ -127,5 +191,7 @@ int main(){
     SDL_DestroyWindow(window);
     SDL_Quit();
 
+    free(ScreenPixels);
+    
     return 0;
 }
