@@ -38,3 +38,5 @@ Simular o comportamento da luz ao interagir com objetos circulares em um plano 2
 
 ```bash
 gcc main.c -IC:/caminho/para/SDL3/include -LC:/caminho/para/SDL3/lib -lSDL3 -lm -o rayt
+
+![Screenshot do programa](screenshot.png)
