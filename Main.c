@@ -43,9 +43,9 @@ struct pixel* CreateScreenPixels(){
             int idx = i * LARGURA + j;
             array[idx].x = j;
             array[idx].y = i;
-            array[idx].r = 255;
-            array[idx].g = 255;
-            array[idx].b = 0;
+            array[idx].r = 0;
+            array[idx].g = 0;
+            array[idx].b = 255;
             array[idx].a = 100; // Porcentagem
 
         }
@@ -65,9 +65,9 @@ void ResetScreenPixels(struct pixel* array){
 
             int idx = i * LARGURA + j;
 
-            array[idx].r = 255;
-            array[idx].g = 255;
-            array[idx].b = 0;
+            array[idx].r = 0;
+            array[idx].g = 0;
+            array[idx].b = 255;
             array[idx].a = 100;
 
         }
@@ -174,7 +174,7 @@ void Light(struct pixel* arrayPixels, struct Circle op_circles[], struct Circle 
                 double distY = y - br_circles[c].y;
                 double dist = pow(pow(distX, 2) + pow(distY, 2), 0.5); // Elevando a 0.5 que é mesma coisa que fazer a raiz quadrada
 
-                double reductionFactor = isBehind ? .9945 : .995;
+                double reductionFactor = isBehind ? .9942 : .995;
                 double a = dist <= br_circles[c].r ? 100.0 : 100 * pow(reductionFactor, dist);
 
                 if (a > pxl_alpha){
