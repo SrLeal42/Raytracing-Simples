@@ -3,7 +3,7 @@
 
 Este é um projeto simples de **Raytracing em 2D**, desenvolvido em **C** utilizando a biblioteca **SDL3** para renderização gráfica e **math.h** para cálculos matemáticos.
 
-![Screenshot do programa](screenshot.png)
+![Screenshot do programa](ray.png)
 
 ## 📌 Objetivo
 
