@@ -3,6 +3,8 @@
 
 Este é um projeto simples de **Raytracing em 2D**, desenvolvido em **C** utilizando a biblioteca **SDL3** para renderização gráfica e **math.h** para cálculos matemáticos.
 
+![Screenshot do programa](screenshot.png)
+
 ## 📌 Objetivo
 
 Simular o comportamento da luz ao interagir com objetos circulares em um plano 2D, com suporte para opacidade, brilho e interação com o mouse.
@@ -38,5 +40,3 @@ Simular o comportamento da luz ao interagir com objetos circulares em um plano 2
 
 ```bash
 gcc main.c -IC:/caminho/para/SDL3/include -LC:/caminho/para/SDL3/lib -lSDL3 -lm -o rayt
-
-![Screenshot do programa](screenshot.png)
