@@ -175,7 +175,7 @@ void Light(struct pixel* arrayPixels, struct Circle op_circles[], struct Circle 
                 double dist = pow(pow(distX, 2) + pow(distY, 2), 0.5); // Elevando a 0.5 que é mesma coisa que fazer a raiz quadrada
 
                 double reductionFactor = isBehind ? .9942 : .995;
-                double a = dist <= br_circles[c].r ? 100.0 : 100 * pow(reductionFactor, dist);
+                double a = 100 * pow(reductionFactor, dist);
 
                 if (a > pxl_alpha){
                     pxl_alpha = a;
