@@ -3,7 +3,7 @@
 #include <math.h>
 #include <SDL3/SDL.h>
 
-#define LARGURA 1000
+#define LARGURA 700
 #define ALTURA 600
 #define BRANCO 0xffffffff
 #define AMARELO 0xffffff00
@@ -11,7 +11,7 @@
 #define RGB_BRANCO = (int[3]){255,255,255}
 #define RGB_AMARELO = {255,255,0}
 #define RGB_LARANJA = {255,140,0}
-#define NUM_CIRCULOS_OPACOS 2
+#define NUM_CIRCULOS_OPACOS 1
 #define NUM_CIRCULOS_BRILHANTES 1
 
 struct pixel {
@@ -61,12 +61,36 @@ struct pixel* CreateScreenPixels(){
 }
 
 
+void ResetScreenPixels(struct pixel* array){
+
+    for (int i = 0; i < ALTURA; i++){
+
+        for (int j = 0; j < LARGURA; j++){
+
+            int idx = i * LARGURA + j;
+
+            array[idx].r = 255;
+            array[idx].g = 255;
+            array[idx].b = 0;
+            array[idx].a = 100;
+
+        }
+    
+    }
+
+}
+
 void DrawCircle(struct pixel* arrayPixels, struct Circle circle){
     
     // int halfRadius = circle.r/2;
 
     for (int y = circle.y - circle.r; y <= circle.y + circle.r; y++){
         for (int x = circle.x - circle.r; x <= circle.x + circle.r; x++){
+
+            if (x > LARGURA || x < 0 || y > ALTURA || y < 0){
+                continue;
+            }
+
             double distX = x - circle.x;
             double distY = y - circle.y;
             double dist_squared = pow(distX, 2) + pow(distY, 2);
@@ -74,6 +98,10 @@ void DrawCircle(struct pixel* arrayPixels, struct Circle circle){
             if (dist_squared <= pow(circle.r, 2)){
 
                 int idx = y * LARGURA + x;
+                
+                if (idx >= LARGURA * ALTURA){
+                    break;
+                }
 
                 struct pixel* pxl = &arrayPixels[idx];
                 
@@ -99,6 +127,44 @@ void DrawCircles(struct pixel* arrayPixels, struct Circle circles[], int num_cir
 }
 
 
+double DistanciaPontoSegmento(struct Circle op_circle, struct Circle br_circle, double x, double y) {
+    double dx = x - br_circle.x;
+    double dy = y - br_circle.y;
+
+    if (dx == 0 && dy == 0)
+        return hypot(op_circle.x - br_circle.x, op_circle.y - br_circle.y);  // segmento é um ponto
+
+    double t = ((op_circle.x - br_circle.x) * dx + (op_circle.y - br_circle.y) * dy) / (dx*dx + dy*dy);
+    t = fmax(0, fmin(1, t));
+
+    double projX = br_circle.x + t * dx;
+    double projY = br_circle.y + t * dy;
+
+    return hypot(op_circle.x - projX, op_circle.y - projY);
+}
+
+int IsBehindOpaqueCircles(double x, double y, struct Circle op_circles[], struct Circle br_circle){
+    
+    int isBehind = 0;
+
+    for (int i = 0; i < NUM_CIRCULOS_OPACOS; i++){
+        
+        double dist = DistanciaPontoSegmento(op_circles[i], br_circle, x, y);
+
+        // printf("DIST %2f\n", dist);
+
+        if (dist < op_circles[i].r){
+            isBehind = 1;
+        }
+
+
+    }
+    
+
+    return isBehind;
+
+}
+
 void Light(struct pixel* arrayPixels, struct Circle op_circles[], struct Circle br_circles[]){
 
 
@@ -112,36 +178,29 @@ void Light(struct pixel* arrayPixels, struct Circle op_circles[], struct Circle 
             double pxl_alpha = 0.0; 
             
             for (int c = 0; c < NUM_CIRCULOS_BRILHANTES; c++){
-                
+
+                int isBehind = IsBehindOpaqueCircles(x, y, op_circles, br_circles[c]);
+
                 double distX = x - br_circles[c].x;
                 double distY = y - br_circles[c].y;
                 double dist = pow(pow(distX, 2) + pow(distY, 2), 0.5); // Elevando a 0.5 que é mesma coisa que fazer a raiz quadrada
 
                 // printf("idx: %d  x: %d  y: %d  a: %.2f\n", idx, x, y, pxl->a);
-                double a = 0.0;
-                a = dist <= br_circles[c].r ? 100.0 : 100 * pow(.997, dist);
-
-
-                // if (dist != 0 ){
-                //     // a = 100/(dist * 0.01);
-                    
-                // }
+                double reductionFactor = isBehind ? .9945 : .995;
+                double a = dist <= br_circles[c].r ? 100.0 : 100 * pow(reductionFactor, dist);
 
                 if (a > pxl_alpha){
                     pxl_alpha = a;
                 }
 
+                
+
             }
             
-            pxl_alpha = pxl_alpha <= 0 ? 0.0 : pxl_alpha;
+            pxl_alpha = pxl_alpha <= 1 ? 0.0 : pxl_alpha;
             // printf("idx: %d AA: %.2lf\n", idx, pxl_alpha);
             pxl->a = pxl_alpha;
             
-
-
-            // SDL_Rect p = (SDL_Rect) {x, y, 1, 1};
-            // Uint32 cor = SDL_MapRGB(SDL_GetPixelFormatDetails(surface->format), NULL, 255, 255, 0);
-            // SDL_FillSurfaceRect(surface, &p, cor);
         }
     }
         
@@ -169,6 +228,53 @@ void DrawScreenPixels(SDL_Surface* surface, struct pixel* arrayPixels){
 }
 
 
+
+void handleClickMouse(struct Circle* op_circles, struct Circle* br_circles, struct Circle** dragging){
+    float mouse_x, mouse_y;
+    Uint32 buttons = SDL_GetMouseState(&mouse_x, &mouse_y);
+    // printf("DRA %p\n", (void*) dragging);
+    if (buttons & SDL_BUTTON_MASK(SDL_BUTTON_LEFT)) {
+        for (int i = 0; i < NUM_CIRCULOS_BRILHANTES; i++){
+            struct Circle* circle = &br_circles[i];
+
+            if (*dragging != NULL && *dragging != circle){
+                // printf("DRA %p\n", (void*) dragging);
+                continue;
+            }
+
+            if ((mouse_x <= circle->x + circle->r && mouse_x >= circle->x - circle->r) && 
+            (mouse_y <= circle->y + circle->r && mouse_y >= circle->y - circle->r)){
+                circle->x = mouse_x;
+                circle->y = mouse_y;
+
+                *dragging = circle;
+                break;
+            }
+            
+        }
+
+        for (int i = 0; i < NUM_CIRCULOS_OPACOS; i++){
+            struct Circle* circle = &op_circles[i];
+
+            if (*dragging != NULL && *dragging != circle){
+                //printf("DRA %p\n", (void*) dragging);
+                continue;
+            }
+
+            if ((mouse_x <= circle->x + circle->r && mouse_x >= circle->x - circle->r) && 
+            (mouse_y <= circle->y + circle->r && mouse_y >= circle->y - circle->r)){
+                circle->x = mouse_x;
+                circle->y = mouse_y;
+                
+                *dragging = circle;
+
+                break;
+            }
+            
+        }
+    }
+}
+
 int main(){
 
     SDL_Init(SDL_INIT_VIDEO);
@@ -177,12 +283,12 @@ int main(){
     SDL_Surface* surface = SDL_CreateSurface(LARGURA, ALTURA, SDL_PIXELFORMAT_RGBA8888);// SDL_GetWindowSurface(window);
 
     struct Circle opaque_circles[NUM_CIRCULOS_OPACOS] = {
-        (struct Circle) {700, 200, 50, {255,255,255}},
-        (struct Circle) {700, 400, 50, {255,255,255}}
+        (struct Circle) {400, 200, 100, {255,255,255}}
+        //(struct Circle) {400, 400, 50, {255,255,255}}
     };
 
     struct Circle bright_circles[NUM_CIRCULOS_BRILHANTES] = {
-        (struct Circle) {400, 200, 50, {255,140,0}}
+        (struct Circle) {250, 300, 50, {255,140,0}}
     };
 
 
@@ -194,19 +300,29 @@ int main(){
 
     SDL_Event event;
 
-    while(running){
+    struct Circle* dragging_circle = NULL;
 
+    while(running){
+        // running = false;
         while(SDL_PollEvent(&event)){
             if (event.type == SDL_EVENT_QUIT){
                 running = false;
             }
+            if (event.type == SDL_EVENT_MOUSE_BUTTON_UP) {
+                if (event.button.button == SDL_BUTTON_LEFT) {
+                    dragging_circle = NULL;
+                }
+            }
         }
 
 
+        ResetScreenPixels(ScreenPixels);
         
+        handleClickMouse(opaque_circles, bright_circles, &dragging_circle);
 
-        DrawCircles(ScreenPixels, opaque_circles, NUM_CIRCULOS_OPACOS);
         DrawCircles(ScreenPixels, bright_circles, NUM_CIRCULOS_BRILHANTES);
+        DrawCircles(ScreenPixels, opaque_circles, NUM_CIRCULOS_OPACOS);
+        
         Light(ScreenPixels, opaque_circles, bright_circles);
         
         DrawScreenPixels(surface, ScreenPixels);
